@@ -128,43 +128,14 @@ impl SfExpress {
         Ok(task_list)
     }
 
-    pub async fn do_tasks(&self, task_list: Vec<Task>) -> Result<()> {
-        let task_url = format!(
-            "{}/mcs-mimp/commonPost/~memberEs~taskRecord~finishTask",
-            self.domain
-        );
+    pub async fn get_award(&self, task_list: Vec<Task>) -> Result<()> {
         let award_url = format!(
             "{}/mcs-mimp/commonPost/~memberNonactivity~integralTaskStrategyService~fetchIntegral",
             self.domain
         );
         for task in task_list {
-            if task.status == 2 {
-                // 待完成
-                let resp = self
-                    .client
-                    .post(task_url.clone())
-                    .json(&json!({
-                        "taskCode": task.task_code,
-                    }))
-                    .send()
-                    .await?
-                    .json::<Value>()
-                    .await?;
-                let is_success = resp
-                    .get("obj")
-                    .unwrap_or(&Value::Bool(false))
-                    .as_bool()
-                    .unwrap();
-                if is_success {
-                    println!("{}, 成功完成任务:《{}》!", self.nickname, task.title);
-                    tokio::time::sleep(Duration::from_secs(2)).await;
-                } else {
-                    println!("{}, 无法完成任务:《{}》!", self.nickname, task.title);
-                    tokio::time::sleep(Duration::from_secs(1)).await;
-                }
-                continue;
-            }
             if task.status == 1 {
+                // 1: 待领取奖励
                 // 待领奖
                 let resp = self
                     .client
@@ -189,21 +160,123 @@ impl SfExpress {
                         "{}, 成功领取任务:《{}》奖励, 获得积分:{}!",
                         self.nickname, task.title, task.point
                     );
-                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    tokio::time::sleep(Duration::from_secs(3)).await;
                 } else {
                     println!("{}, 领取任务《{}》奖励失败!", self.nickname, task.title);
-                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    tokio::time::sleep(Duration::from_secs(3)).await;
                 }
+            }else{
+                println!("{}, 今日已领取任务:《{}》奖励!", self.nickname, task.title);
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn sign(&self) -> Result<()> {
+        let can_sign_url = format!("{}/mcs-mimp/commonPost/~memberNonactivity~integralTaskSignPlusService~automaticSignFetchPackage", self.domain);
+        let resp = self.client.post(can_sign_url).json(&json!({
+            "channelFrom": "SFAPP"
+        })).send().await?.json::<Value>().await?;
+        let is_success = resp
+        .get("success")
+        .unwrap_or(&Value::Bool(false))
+        .as_bool()
+        .unwrap();
+        match is_success {
+            true => {
+                let sign_days = resp["obj"]["countDay"].as_u64().unwrap_or(0);
+                println!("{}, 今日已签到, 连续签到天数:{}", self.nickname, sign_days);
+            },
+            false => {
+                println!("{}, 获取签到信息失败!", self.nickname);
+            },
+        }
+        Ok(())
+    }
+
+    pub async fn query_point(&self) -> Result<()> {
+        let url = format!("{}/mcs-mimp/commonPost/~memberNonactivity~integralTaskStrategyService~queryPointTaskAndSignFromES", self.domain);
+
+        let resp = self
+            .client
+            .post(url)
+            .json(&json!({
+                "channelType": "1",
+                "deviceId": "b85a7d52-4cde-a2d4"
+            }))
+            .send()
+            .await?
+            .json::<Value>()
+            .await?;
+        let is_success = resp
+            .get("success")
+            .unwrap_or(&Value::Bool(false))
+            .as_bool()
+            .unwrap();
+        match is_success {
+            true => {
+                let points = resp["obj"]["totalPoint"].as_u64().unwrap_or(0);
+                println!("{}, 当前已有积分:{}", self.nickname, points);
+            },
+            false => {
+                println!("{}, 查询积分数据失败!", self.nickname)
+            },
+        }
+        Ok(())
+    }
+
+    pub async fn do_tasks(&self, task_list: Vec<Task>) -> Result<()> {
+        let task_url = format!(
+            "{}/mcs-mimp/commonPost/~memberEs~taskRecord~finishTask",
+            self.domain
+        );
+
+        for task in task_list {
+            if task.status != 2 {
+                //  2:待做任务
                 continue;
             }
-            println!("{}, 今日已完成任务:《{}》!", self.nickname, task.title);
+            if task.title.contains("完成每月任务")
+                || task.title.contains("参与积分活动")
+                || task.title.contains("每月累计寄件")
+                || task.title.contains("添加顺丰小组件")
+            {
+                println!("{}, 跳过任务:《{}》!", self.nickname, task.title);
+                continue;
+            }
+            let resp = self
+                .client
+                .post(task_url.clone())
+                .json(&json!({
+                    "taskCode": task.task_code,
+                }))
+                .send()
+                .await?
+                .json::<Value>()
+                .await?;
+            let is_success = resp
+                .get("obj")
+                .unwrap_or(&Value::Bool(false))
+                .as_bool()
+                .unwrap();
+            if is_success {
+                println!("{}, 成功完成任务:《{}》!", self.nickname, task.title);
+                tokio::time::sleep(Duration::from_secs(3)).await;
+            } else {
+                println!("{}, 无法完成任务:《{}》!", self.nickname, task.title);
+                tokio::time::sleep(Duration::from_secs(3)).await;
+            }
         }
         Ok(())
     }
 
     pub async fn run(&self) -> Result<()> {
+        self.sign().await?;
         let task_list = self.get_tasks().await?;
         self.do_tasks(task_list).await?;
+        let task_list = self.get_tasks().await?;
+        self.get_award(task_list).await?;
+        self.query_point().await?;
         Ok(())
     }
 }
@@ -216,12 +289,12 @@ async fn main() -> Result<()> {
             .split(';')
             .filter(|f| !f.is_empty())
             .collect::<Vec<&str>>();
-        println!("已配置{:?}个SESSION_ID, 开始执行任务!", items.len());
+        println!("已配置{}个SESSION_ID, 开始执行任务!", items.len());
         for item in items {
             if let Ok(sf_express) = SfExpress::new(item.to_string()).await {
                 sf_express.run().await.ok();
             } else {
-                println!("请检查SESSION_ID:{:?}", item);
+                println!("请检查SESSION_ID:{}", item);
             }
         }
     }
