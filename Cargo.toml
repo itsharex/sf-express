@@ -1,5 +1,5 @@
 [package]
-name = "sf_express"
+name = "sf-express"
 version = "0.1.1"
 edition = "2021"
 

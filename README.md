@@ -3,6 +3,11 @@
 - [x] 自动完成积分任务
 - [ ] ......
 
+### dokcer 运行
+
+- 执行一次: `docker run -it --rm -e SF_EXPRESS_SESSION_ID="nodeqqeeewww1221212211" classmatelin/sf-express sf-express`
+
+- 内置定时任务: `5 0 * * *`, `docker run -itd -e SF_EXPRESS_SESSION_ID="nodeqqeeewww1221212211" --name sf-express classmatelin/sf-express`
 ### 安装
 
 点击[Release](https://github.com/ClassmateLin/cf-express/releases), 下载对应平台的压缩包解压即可。
@@ -25,7 +30,7 @@ cargo build --release
 ```
 SF_EXPRESS_SESSION_ID="node0xnbyl6urn2v3he875xxhpnu2993255"
 ```
-- `./sf_express`执行即可。
+- `./sf-express`执行即可。
 
 
 ### 其他脚本

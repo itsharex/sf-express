@@ -72,7 +72,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get install upx
-        upx target/${{ matrix.target }}/release/sf_express
+        upx target/${{ matrix.target }}/release/sf-express
     - name: Package Artifacts
       run: |
         src=$(pwd)
@@ -85,10 +85,10 @@ jobs:
                 stage=$(mktemp -d -t tmp)
                 ;;
         esac
-        cp target/${{ matrix.target }}/release/sf_express $stage/
+        cp target/${{ matrix.target }}/release/sf-express $stage/
         cd $stage
         RELEASE_VERSION=${GITHUB_REF#refs/tags/}
-        ASSET_NAME="sf_express-$RELEASE_VERSION-${{ matrix.target }}.tar.gz"
+        ASSET_NAME="sf-express-$RELEASE_VERSION-${{ matrix.target }}.tar.gz"
         ASSET_PATH="$src/$ASSET_NAME"
         CHECKSUM_PATH="$ASSET_PATH.sha256"
         echo "ASSET_PATH=$ASSET_PATH" >> $GITHUB_ENV
