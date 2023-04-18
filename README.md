@@ -10,13 +10,13 @@
 - 内置定时任务: `5 0 * * *`, `docker run -itd -e SF_EXPRESS_SESSION_ID="nodeqqeeewww1221212211" --name sf-express classmatelin/sf-express`
 ### 安装
 
-点击[Release](https://github.com/ClassmateLin/cf-express/releases), 下载对应平台的压缩包解压即可。
+点击[Release](https://github.com/ClassmateLin/sf-express/releases), 下载对应平台的压缩包解压即可。
 
 ### 编译
 
 执行:
 ```
-git clone https://github.com/ClassmateLin/cf-express.git
+git clone https://github.com/ClassmateLin/sf-express.git
 cd cf-express
 cargo build --release
 ```
